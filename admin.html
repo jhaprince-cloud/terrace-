@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Admin | Terrace Kit Co.</title>
+<style>
+:root{--bg:#f3f5fa;--card:#fff;--ink:#0d1633;--muted:#5a6483;--line:#d9deea;--blue:#1b3dff;--ok:#0b8f3c;--warn:#b26b00;--bad:#d1322d;--sun:#ffd23f}
+@media (prefers-color-scheme:dark){:root{--bg:#0a0f22;--card:#121a38;--ink:#eef1fa;--muted:#9aa4c4;--line:#232d57;--ok:#3ecf79;--warn:#f0b34a;--bad:#ff6b66}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
+.top{display:flex;align-items:center;gap:16px;padding:12px 24px;background:var(--ink);color:var(--bg);position:sticky;top:0;z-index:5}
+.top b{font-size:18px;letter-spacing:.02em}.top .sp{flex:1}
+.top a,.top button{color:inherit;background:none;border:1px solid rgba(255,255,255,.35);border-radius:8px;padding:6px 12px;text-decoration:none;cursor:pointer}
+main{max-width:1150px;margin:0 auto;padding:24px 20px 60px}
+.gate{max-width:380px;margin:12vh auto;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:30px}
+.gate h1{margin:0 0 6px;font-size:26px}.gate p{color:var(--muted);margin:0 0 18px}
+input,select{background:var(--bg);border:1.5px solid var(--line);border-radius:9px;padding:9px 12px}
+.gate input{width:100%;margin-bottom:12px}
+.btn{background:var(--blue);color:#fff;border:0;border-radius:9px;padding:10px 18px;font-weight:600;cursor:pointer}
+.btn.alt{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
+.err{color:var(--bad);min-height:22px;font-weight:500;margin:0 0 8px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+.stat small{color:var(--muted)}.stat div{font-size:28px;font-weight:700;margin-top:2px}
+.tabs{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center}
+.tab{border:1.5px solid var(--line);background:var(--card);border-radius:99px;padding:7px 16px;cursor:pointer}
+.tab[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.sep{width:1px;height:26px;background:var(--line);margin:0 6px}
+.wrapt{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:720px}
+th{text-align:left;font-size:13px;color:var(--muted);font-weight:600;padding:12px 14px;border-bottom:1px solid var(--line)}
+td{padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr:last-child td{border-bottom:0}
+tr.row{cursor:pointer}tr.row:hover td{background:color-mix(in srgb,var(--blue) 5%,var(--card))}
+.det td{background:var(--bg);cursor:default}
+.det .g{display:grid;grid-template-columns:1fr 1fr;gap:20px}.det h4{margin:0 0 6px;font-size:13px;color:var(--muted)}.det p{margin:0 0 4px}
+.pill{display:inline-block;border-radius:99px;padding:2px 10px;font-size:13px;font-weight:600;background:var(--line)}
+.pill.paid{background:color-mix(in srgb,var(--blue) 16%,transparent);color:var(--blue)}
+.pill.shipped{background:color-mix(in srgb,var(--warn) 20%,transparent);color:var(--warn)}
+.pill.delivered{background:color-mix(in srgb,var(--ok) 20%,transparent);color:var(--ok)}
+.pill.cancelled{background:color-mix(in srgb,var(--bad) 18%,transparent);color:var(--bad)}
+.num{text-align:right;white-space:nowrap}
+td input{width:90px}.low{color:var(--bad);font-weight:700}
+.empty{padding:40px;text-align:center;color:var(--muted)}
+.toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,90px);background:var(--ink);color:var(--bg);padding:11px 20px;border-radius:99px;transition:transform .25s;z-index:20}
+.toast.on{transform:translate(-50%,0)}
+[hidden]{display:none!important}
+@media (max-width:760px){.stats{grid-template-columns:1fr 1fr}.det .g{grid-template-columns:1fr}.top{padding:10px 14px}}
+</style>
+</head>
+<body>
+<div class="top"><b>Terrace admin</b><span class="sp"></span><a href="/" target="_blank" rel="noopener">View store</a><button id="out" hidden>Log out</button></div>
+
+<form class="gate" id="gate">
+<h1>Admin login</h1><p>Enter the admin key from your <code>.env</code> file.</p>
+<input type="password" id="key" placeholder="Admin key" autocomplete="current-password" required aria-label="Admin key">
+<p class="err" id="gerr" role="alert"></p>
+<button class="btn" style="width:100%">Log in</button>
+</form>
+
+<main id="app" hidden>
+<div class="stats" id="stats"></div>
+<div class="tabs" id="tabs"></div>
+<div class="wrapt" id="view"></div>
+</main>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const $f=n=>'$'+Number(n).toFixed(2);
+let key='',orders=[],prods=[],tab='to-ship',open=null;
+try{key=sessionStorage.getItem('tk-admin')||''}catch(e){}
+const PN=id=>(prods.find(p=>p.id===id)||{n:'Product '+id}).n;
+async function api(u,m,b){
+  const r=await fetch(u,{method:m||'GET',headers:Object.assign({'x-admin-key':key},b?{'Content-Type':'application/json'}:{}),body:b?JSON.stringify(b):undefined});
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok)throw Object.assign(new Error(j.error||'Request failed'),{status:r.status});return j}
+function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove('on'),2200)}
+async function load(){
+  const[o,p]=await Promise.all([api('/api/admin/orders'),fetch('/api/products').then(r=>r.json())]);
+  orders=o.orders;prods=p.products||[];$('#gate').hidden=true;$('#app').hidden=false;$('#out').hidden=false;render()}
+const TABS=[['to-ship','To ship'],['all','All orders'],['shipped','Shipped'],['delivered','Delivered'],['cancelled','Cancelled'],['pending','Unpaid'],['products','Products']];
+function render(){
+  const done=orders.filter(o=>['paid','shipped','delivered'].includes(o.status));
+  const rev=done.reduce((a,o)=>a+o.t.t,0),ship=orders.filter(o=>o.status==='paid').length,low=prods.filter(p=>p.stock<10).length;
+  $('#stats').innerHTML=[['Revenue',$f(rev)],['Paid orders',done.length],['Waiting to ship',ship],['Low stock items',low]].map(([a,b])=>`<div class="stat"><small>${a}</small><div>${b}</div></div>`).join('');
+  $('#tabs').innerHTML=TABS.map(([k,l],i)=>(k==='products'?'<span class="sep"></span>':'')+`<button class="tab" data-tab="${k}" aria-pressed="${k===tab}">${l}</button>`).join('')+'<span style="flex:1"></span><button class="btn alt" id="csv">Export orders CSV</button>';
+  $('#view').innerHTML=tab==='products'?prodView():orderView()}
+function orderView(){
+  const m={'to-ship':'paid'}[tab]||tab,list=orders.filter(o=>tab==='all'||o.status===m);
+  if(!list.length)return '<div class="empty">No orders here yet.</div>';
+  return '<table><thead><tr><th>Order</th><th>Date</th><th>Customer</th><th class="num">Items</th><th class="num">Total</th><th>Status</th></tr></thead><tbody>'+list.map(o=>{
+    const n=o.items.reduce((a,i)=>a+i.q,0),sel=`<select data-st="${esc(o.id)}" aria-label="Status for ${esc(o.id)}">${o.status==='pending'?'<option selected disabled>pending (unpaid)</option>':''}${['paid','shipped','delivered','cancelled'].map(s=>`<option ${s===o.status?'selected':''}>${s}</option>`).join('')}</select>`;
+    return `<tr class="row" data-o="${esc(o.id)}"><td><b>${esc(o.id)}</b></td><td>${new Date(o.date).toLocaleString([], {dateStyle:'medium',timeStyle:'short'})}</td><td>${esc(o.to.name)}<br><small style="color:var(--muted)">${esc(o.email)}</small></td><td class="num">${n}</td><td class="num"><b>${$f(o.t.t)}</b></td><td>${sel}</td></tr>`+(open===o.id?detail(o):'')}).join('')+'</tbody></table>'}
+function detail(o){return `<tr class="det"><td colspan="6"><div class="g"><div><h4>Items</h4>${o.items.map(i=>`<p>${i.q} &times; ${esc(PN(i.id))}, size ${esc(i.s)}${i.x?' &middot; print: <b>'+esc(i.x)+'</b>':''}</p>`).join('')}<h4 style="margin-top:12px">Totals</h4><p>Subtotal ${$f(o.t.s)} &middot; Delivery ${$f(o.t.shp)} &middot; Tax ${$f(o.t.tax)}</p></div><div><h4>Deliver to</h4><p>${esc(o.to.name)}<br>${esc(o.to.addr)}<br>${esc(o.to.city)} ${esc(o.to.zip)}</p><p>Phone: ${esc(o.phone)}<br>Email: ${esc(o.email)}</p><p>${esc(o.ship)} delivery${o.card?' &middot; card ending '+esc(o.card):''}</p></div></div></td></tr>`}
+function prodView(){return '<table><thead><tr><th>Product</th><th>Club</th><th>Price ($)</th><th>Stock</th><th></th></tr></thead><tbody>'+prods.map(p=>`<tr><td><b>${esc(p.n)}</b></td><td>${esc(p.c)}</td><td><input type="number" min="1" step="0.01" value="${p.p}" data-pp="${p.id}" aria-label="Price for ${esc(p.n)}"></td><td><input type="number" min="0" step="1" value="${p.stock}" data-ps="${p.id}" aria-label="Stock for ${esc(p.n)}" class="${p.stock<10?'low':''}"></td><td><button class="btn" data-save="${p.id}">Save</button></td></tr>`).join('')+'</tbody></table>'}
+function csv(){const q=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
+  const rows=[['Order','Date','Status','Name','Email','Phone','Address','City','Zip','Delivery','Items','Subtotal','Shipping','Tax','Total']].concat(orders.map(o=>[o.id,o.date,o.status,o.to.name,o.email,o.phone,o.to.addr,o.to.city,o.to.zip,o.ship,o.items.map(i=>i.q+'x '+PN(i.id)+' '+i.s+(i.x?' ['+i.x+']':'')).join('; '),o.t.s,o.t.shp,o.t.tax,o.t.t]));
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([rows.map(r=>r.map(q).join(',')).join('\n')],{type:'text/csv'}));a.download='orders.csv';a.click()}
+document.addEventListener('click',async e=>{
+  const t=e.target.closest('button,tr.row');if(!t||e.target.closest('select'))return;
+  if(t.dataset.tab){tab=t.dataset.tab;open=null;render()}
+  else if(t.id==='csv')csv();
+  else if(t.id==='out'){key='';try{sessionStorage.removeItem('tk-admin')}catch(x){}location.reload()}
+  else if(t.dataset.save){const id=t.dataset.save,stock=parseInt($(`[data-ps="${id}"]`).value,10),price=parseFloat($(`[data-pp="${id}"]`).value);
+    if(!(stock>=0)||!(price>0))return toast('Enter a valid price and stock number');
+    try{await api('/api/admin/products/'+id,'PATCH',{stock,price});const p=prods.find(x=>x.id==id);p.stock=stock;p.p=price;toast('Saved '+p.n);render()}catch(x){toast(x.message)}}
+  else if(t.dataset.o){open=open===t.dataset.o?null:t.dataset.o;render()}});
+document.addEventListener('change',async e=>{const s=e.target.dataset.st;if(!s)return;
+  try{await api('/api/admin/orders/'+s,'PATCH',{status:e.target.value});orders.find(o=>o.id===s).status=e.target.value;toast(s+' marked '+e.target.value);render()}catch(x){toast(x.message);render()}});
+$('#gate').onsubmit=async e=>{e.preventDefault();key=$('#key').value.trim();$('#gerr').textContent='';
+  try{await load();try{sessionStorage.setItem('tk-admin',key)}catch(x){}}
+  catch(x){key='';$('#gerr').textContent=x.status===403?'That key is not correct. Check ADMIN_KEY in .env and restart the server.':x.status===429?'Too many tries. Wait a few minutes.':'Cannot reach the server.'}};
+if(key)load().catch(()=>{key='';try{sessionStorage.removeItem('tk-admin')}catch(x){}});
+</script>
+</body>
+</html>
